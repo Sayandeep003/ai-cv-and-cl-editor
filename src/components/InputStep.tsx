@@ -135,11 +135,11 @@ We are looking for a Senior Software Engineer to join our growing team. The idea
         </div>
         
         <div
-          className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
-            dragActive 
-              ? 'border-primary bg-primary/5' 
-              : formData.cvFile 
-                ? 'border-success bg-success/5' 
+          className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+            dragActive
+              ? 'border-primary bg-primary/5'
+              : formData.cvFile
+                ? 'border-success bg-success/5'
                 : 'border-border hover:border-primary/50'
           }`}
           onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
