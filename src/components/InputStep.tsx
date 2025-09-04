@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Upload, FileText, Heart, Zap } from 'lucide-react';
+import { Upload, FileText, Heart, Zap, AlertCircle, CheckCircle } from 'lucide-react';
 import { ApplicationData } from './CareerCoPilot';
+import { parseFile, validateFile } from '@/lib/fileParser';
+import { useToast } from '@/hooks/use-toast';
 
 interface InputStepProps {
   onGenerate: (data: ApplicationData) => void;
@@ -10,10 +12,53 @@ interface InputStepProps {
 const InputStep = ({ onGenerate, initialData }: InputStepProps) => {
   const [formData, setFormData] = useState<ApplicationData>(initialData);
   const [dragActive, setDragActive] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [cvText, setCvText] = useState<string>('');
+  const { toast } = useToast();
 
-  const handleFileChange = (file: File) => {
-    if (file && (file.type === 'application/pdf' || file.name.endsWith('.docx'))) {
-      setFormData(prev => ({ ...prev, cvFile: file }));
+  const handleFileChange = async (file: File) => {
+    // Validate file first
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      toast({
+        title: "Invalid File",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessingFile(true);
+    
+    try {
+      // Parse the file to extract text
+      const parseResult = await parseFile(file);
+      
+      if (parseResult.success) {
+        setFormData(prev => ({ ...prev, cvFile: file }));
+        setCvText(parseResult.text);
+        toast({
+          title: "File uploaded successfully",
+          description: "Your CV has been processed and is ready for optimization.",
+        });
+      } else {
+        toast({
+          title: "File Processing Error",
+          description: parseResult.error || "Unable to process the file.",
+          variant: "destructive",
+        });
+        // Still allow the file to be uploaded even if parsing fails
+        setFormData(prev => ({ ...prev, cvFile: file }));
+        setCvText('');
+      }
+    } catch (error) {
+      toast({
+        title: "Upload Error",
+        description: "An unexpected error occurred while processing your file.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingFile(false);
     }
   };
 
@@ -28,9 +73,27 @@ const InputStep = ({ onGenerate, initialData }: InputStepProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.jobDescription.trim() && formData.cvFile) {
-      onGenerate(formData);
+    
+    if (!formData.jobDescription.trim()) {
+      toast({
+        title: "Missing Job Description",
+        description: "Please paste the job description to continue.",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    if (!formData.cvFile) {
+      toast({
+        title: "Missing CV File",
+        description: "Please upload your CV to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Include the parsed CV text in the data
+    onGenerate({ ...formData, cvText });
   };
 
   const isValid = formData.jobDescription.trim().length > 0 && formData.cvFile;
@@ -56,8 +119,10 @@ We are looking for a Senior Software Engineer to join our growing team. The idea
 • Experience leading technical projects and mentoring junior developers
 • Excellent communication skills and collaborative mindset..."
           required
+          aria-label="Job Description"
+          aria-describedby="job-description-help"
         />
-        <p className="text-sm text-muted-foreground mt-2">
+        <p id="job-description-help" className="text-sm text-muted-foreground mt-2">
           Copy and paste the complete job posting for the most accurate optimization
         </p>
       </div>
@@ -81,15 +146,22 @@ We are looking for a Senior Software Engineer to join our growing team. The idea
           onDragLeave={() => setDragActive(false)}
           onDrop={handleDrop}
         >
-          {formData.cvFile ? (
+          {isProcessingFile ? (
+            <div className="flex items-center justify-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-foreground">Processing your CV...</p>
+            </div>
+          ) : formData.cvFile ? (
             <div className="flex items-center justify-center gap-3">
               <div className="p-2 bg-success rounded-lg">
-                <FileText className="w-6 h-6 text-success-foreground" />
+                {cvText ? <CheckCircle className="w-6 h-6 text-success-foreground" /> : <FileText className="w-6 h-6 text-success-foreground" />}
               </div>
               <div className="text-left">
                 <p className="font-medium text-foreground">{formData.cvFile.name}</p>
                 <p className="text-sm text-muted-foreground">
                   {(formData.cvFile.size / 1024 / 1024).toFixed(2)} MB
+                  {cvText && <span className="text-success"> • Text extracted</span>}
+                  {!cvText && <span className="text-muted-foreground"> • Upload complete</span>}
                 </p>
               </div>
             </div>
@@ -114,6 +186,8 @@ We are looking for a Senior Software Engineer to join our growing team. The idea
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             accept=".pdf,.docx"
             onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
+            disabled={isProcessingFile}
+            aria-label="Upload CV file"
           />
         </div>
         
@@ -145,8 +219,10 @@ Examples:
 • 'I've been following your company's work in renewable energy and am excited about your recent solar panel innovations.'
 • 'As someone who uses Python daily for data analysis, I was thrilled to see it's a core part of your tech stack.'
 • 'Your company's commitment to work-life balance really resonates with my values.'"
+          aria-label="Personal touch (optional)"
+          aria-describedby="personal-touch-help"
         />
-        <div className="flex items-center gap-2 mt-2">
+        <div id="personal-touch-help" className="flex items-center gap-2 mt-2">
           <Heart className="w-4 h-4 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             This helps create a more compelling, personalized cover letter
@@ -158,15 +234,21 @@ Examples:
       <div className="text-center">
         <button
           type="submit"
-          disabled={!isValid}
+          disabled={!isValid || isProcessingFile}
           className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+          aria-label="Generate optimized CV and cover letter"
         >
           <Zap className="w-5 h-5" />
-          Generate My Application Kit
+          {isProcessingFile ? 'Processing File...' : 'Generate My Application Kit'}
         </button>
-        {!isValid && (
-          <p className="text-sm text-muted-foreground mt-2">
+        {!isValid && !isProcessingFile && (
+          <p className="text-sm text-muted-foreground mt-2" role="alert">
             Please fill in the job description and upload your CV to continue
+          </p>
+        )}
+        {isProcessingFile && (
+          <p className="text-sm text-muted-foreground mt-2">
+            Please wait while we process your CV...
           </p>
         )}
       </div>

@@ -24,20 +24,45 @@ const ResultsStep = ({ results, onStartOver }: ResultsStepProps) => {
       }
     } catch (err) {
       console.error('Failed to copy text: ', err);
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (type === 'cv') {
+        setCopiedCv(true);
+        setTimeout(() => setCopiedCv(false), 2000);
+      } else {
+        setCopiedCover(true);
+        setTimeout(() => setCopiedCover(false), 2000);
+      }
     }
   };
 
   const handleDownload = (text: string, filename: string) => {
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    try {
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Failed to download file: ', err);
+      // Fallback: open text in new window for manual copy/save
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`<pre>${text}</pre>`);
+        newWindow.document.title = filename;
+      }
+    }
   };
 
   return (
@@ -113,6 +138,7 @@ const ResultsStep = ({ results, onStartOver }: ResultsStepProps) => {
             value={coverLetter}
             onChange={(e) => setCoverLetter(e.target.value)}
             className="textarea-professional min-h-80"
+            aria-label="Edit cover letter"
           />
 
           <div className="flex gap-2 mt-4">

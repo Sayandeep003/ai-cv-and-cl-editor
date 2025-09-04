@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Briefcase, FileText, Sparkles } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import InputStep from './InputStep';
 import ResultsStep from './ResultsStep';
 import LoadingStep from './LoadingStep';
@@ -8,6 +9,7 @@ export type ApplicationData = {
   jobDescription: string;
   cvFile: File | null;
   personalTouch: string;
+  cvText?: string;
 };
 
 export type Results = {
@@ -28,16 +30,23 @@ const CareerCoPilot = () => {
     cvSuggestions: '',
     coverLetter: '',
   });
+  const { toast } = useToast();
 
   const handleGenerate = async (data: ApplicationData) => {
-    setApplicationData(data);
-    setCurrentStep('loading');
-    
-    // Simulate AI processing - In real app, this would call your AI API
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Mock results - In real app, this would come from your AI processing
-    const mockResults: Results = {
+    try {
+      setApplicationData(data);
+      setCurrentStep('loading');
+      
+      toast({
+        title: "Processing your application",
+        description: "Our AI is analyzing your CV and the job description...",
+      });
+      
+      // Simulate AI processing - In real app, this would call your AI API
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Mock results - In real app, this would come from your AI processing
+      const mockResults: Results = {
       cvSuggestions: `📋 **CV Enhancement Suggestions**
 
 **Experience Section - Software Engineer at TechCorp:**
@@ -71,8 +80,21 @@ Best regards,
 [Your Name]`
     };
     
-    setResults(mockResults);
-    setCurrentStep('results');
+      setResults(mockResults);
+      setCurrentStep('results');
+      
+      toast({
+        title: "Success!",
+        description: "Your optimized application kit is ready.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong while processing your application. Please try again.",
+        variant: "destructive",
+      });
+      setCurrentStep('input');
+    }
   };
 
   const handleStartOver = () => {
