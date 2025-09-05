@@ -34,6 +34,7 @@ const CareerCoPilot = () => {
 
   const handleGenerate = async (data: ApplicationData) => {
     try {
+      console.log('🔄 Starting generation process...');
       setApplicationData(data);
       setCurrentStep('loading');
       
@@ -45,9 +46,11 @@ const CareerCoPilot = () => {
       // Import the AI service dynamically to avoid blocking the initial load
       const { processApplication } = await import('@/lib/aiService');
       
+      console.log('📊 Processing application data...');
       // Process application with AI
       const aiResults = await processApplication(data);
       
+      console.log('✅ Generation complete, showing results');
       setResults(aiResults);
       setCurrentStep('results');
       
@@ -56,7 +59,7 @@ const CareerCoPilot = () => {
         description: "Your optimized application kit is ready.",
       });
     } catch (error) {
-      console.error('Error processing application:', error);
+      console.error('❌ Error processing application:', error);
       toast({
         title: "Error",
         description: "Something went wrong while processing your application. Please try again.",
