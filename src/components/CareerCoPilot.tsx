@@ -42,45 +42,13 @@ const CareerCoPilot = () => {
         description: "Our AI is analyzing your CV and the job description...",
       });
       
-      // Simulate AI processing - In real app, this would call your AI API
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Import the AI service dynamically to avoid blocking the initial load
+      const { processApplication } = await import('@/lib/aiService');
       
-      // Mock results - In real app, this would come from your AI processing
-      const mockResults: Results = {
-      cvSuggestions: `📋 **CV Enhancement Suggestions**
-
-**Experience Section - Software Engineer at TechCorp:**
-• **Original:** "Developed web applications using modern technologies"
-• **Suggested:** "Developed 5+ scalable web applications using React, Node.js, and PostgreSQL, serving 10,000+ daily active users"
-• **Reason:** Adds quantifiable metrics and specific technologies mentioned in the job description
-
-**Skills Section:**
-• **Original:** "Proficient in JavaScript and databases"  
-• **Suggested:** "Expert in JavaScript (ES6+), TypeScript, React, and PostgreSQL database optimization"
-• **Reason:** Matches exact technology stack requirements from the job posting
-
-**Projects Section:**
-• **Original:** "Built e-commerce platform"
-• **Suggested:** "Architected and deployed full-stack e-commerce platform with payment integration, reducing checkout time by 40% and increasing conversion rates by 25%"
-• **Reason:** Demonstrates impact with metrics and shows business value understanding
-
-**Leadership Experience:**
-• **Add:** "Mentored 3 junior developers and led code review processes, improving team code quality scores by 30%"
-• **Reason:** Job description emphasizes collaboration and mentorship - this wasn't in your original CV`,
-
-      coverLetter: `Dear Hiring Manager,
-
-I was excited to discover the Software Engineer position at ${data.jobDescription.includes('company') ? 'your innovative company' : 'TechCorp'}. With 5+ years of experience building scalable web applications using React and Node.js, I'm confident I can contribute immediately to your development team.
-
-In my current role at TechCorp, I've developed web applications serving over 10,000 daily users and led optimization initiatives that reduced load times by 35%. My experience with the exact tech stack mentioned in your posting—React, TypeScript, and PostgreSQL—combined with my track record of mentoring junior developers, aligns perfectly with your team's needs.
-
-${data.personalTouch ? data.personalTouch + '\n\n' : ''}I'm particularly drawn to your company's commitment to innovation and would welcome the opportunity to discuss how my technical expertise and collaborative approach can help drive your next phase of growth.
-
-Best regards,
-[Your Name]`
-    };
-    
-      setResults(mockResults);
+      // Process application with AI
+      const aiResults = await processApplication(data);
+      
+      setResults(aiResults);
       setCurrentStep('results');
       
       toast({
@@ -88,6 +56,7 @@ Best regards,
         description: "Your optimized application kit is ready.",
       });
     } catch (error) {
+      console.error('Error processing application:', error);
       toast({
         title: "Error",
         description: "Something went wrong while processing your application. Please try again.",
