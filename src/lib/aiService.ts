@@ -1,94 +1,150 @@
 import type { ApplicationData, Results } from '@/components/CareerCoPilot';
+import { analyzeCV, type CVAnalysis } from './cvAnalyzer';
+import { analyzeJobDescription, type JobAnalysis } from './jobAnalyzer';
+import { generateSpecificSuggestions, type SpecificSuggestion } from './suggestionGenerator';
 
 // Simulate AI processing with intelligent analysis
 async function simulateProcessing() {
   // Add a realistic delay to simulate AI processing
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, 1500));
 }
 
-// Generate CV suggestions based on job description and CV content
+// Generate CV suggestions with specific, actionable recommendations
 async function generateCVSuggestions(jobDescription: string, cvText: string): Promise<string> {
   await simulateProcessing();
   
-  console.log('Analyzing CV content and job requirements...');
+  console.log('🔍 Performing deep CV analysis...');
+  console.log('📊 Analyzing job requirements and CV alignment...');
   
-  const jobKeywords = extractKeywords(jobDescription);
-  const cvKeywords = extractKeywords(cvText);
-  const missingKeywords = jobKeywords.filter(keyword => 
-    !cvKeywords.some(cvKeyword => cvKeyword.toLowerCase().includes(keyword.toLowerCase()))
-  );
+  // Perform comprehensive analysis
+  const cvAnalysis = analyzeCV(cvText);
+  const jobAnalysis = analyzeJobDescription(jobDescription);
+  const specificSuggestions = generateSpecificSuggestions(cvAnalysis, jobAnalysis);
   
-  // Analyze skills and technologies
-  const techSkills = extractTechSkills(jobDescription);
-  const cvTechSkills = extractTechSkills(cvText);
-  const missingTechSkills = techSkills.filter(skill => 
-    !cvTechSkills.some(cvSkill => cvSkill.toLowerCase().includes(skill.toLowerCase()))
-  );
+  console.log(`✅ Generated ${specificSuggestions.length} specific suggestions`);
   
-  // Generate suggestions based on analysis
-  const suggestions = [];
+  // Format suggestions with specific examples from CV
+  const formattedSuggestions = formatSuggestionsWithExamples(specificSuggestions, cvAnalysis, jobAnalysis);
   
-  if (missingKeywords.length > 0) {
-    suggestions.push(`**Missing Keywords**: Consider incorporating these terms: ${missingKeywords.slice(0, 5).join(', ')}`);
-  }
-  
-  if (missingTechSkills.length > 0) {
-    suggestions.push(`**Technical Skills Gap**: Add these technologies if you have experience: ${missingTechSkills.slice(0, 3).join(', ')}`);
-  }
-  
-  // Add specific improvement suggestions
-  suggestions.push(`**Quantification**: Add specific metrics and numbers to your achievements`);
-  suggestions.push(`**Action Verbs**: Start bullet points with strong action verbs like "Developed", "Led", "Optimized"`);
-  
-  if (jobDescription.toLowerCase().includes('lead') || jobDescription.toLowerCase().includes('senior')) {
-    suggestions.push(`**Leadership**: Highlight leadership and mentorship experiences`);
-  }
-  
-  return `📋 **AI-Powered CV Enhancement Suggestions**
-
-${suggestions.map((suggestion, index) => `${index + 1}. ${suggestion}`).join('\n\n')}
-
-**Keyword Analysis:**
-• Your CV contains: ${cvKeywords.slice(0, 5).join(', ')}
-• Job emphasizes: ${jobKeywords.slice(0, 5).join(', ')}
-• Consider adding: ${missingKeywords.slice(0, 3).join(', ')}
-
-**Recommended Actions:**
-✅ Tailor your summary to match the job requirements
-✅ Quantify achievements with percentages and numbers  
-✅ Use industry-specific terminology from the job posting
-✅ Highlight relevant projects and their impact
-✅ Ensure your CV passes ATS keyword scanning`;
+  return formattedSuggestions;
 }
 
-// Generate cover letter based on job description and personal touch
+function formatSuggestionsWithExamples(
+  suggestions: SpecificSuggestion[],
+  cvAnalysis: CVAnalysis,
+  jobAnalysis: JobAnalysis
+): string {
+  const prioritySuggestions = suggestions.filter(s => s.priority === 'high');
+  const mediumSuggestions = suggestions.filter(s => s.priority === 'medium');
+  
+  let output = `🎯 **Specific CV Enhancement Recommendations**
+
+**🚀 HIGH PRIORITY CHANGES:**
+
+`;
+
+  prioritySuggestions.slice(0, 5).forEach((suggestion, index) => {
+    output += `**${index + 1}. ${suggestion.category}**
+📝 **Current:** ${suggestion.original}
+✨ **Improved:** ${suggestion.suggested}
+💡 **Why:** ${suggestion.reasoning}
+
+`;
+  });
+
+  if (mediumSuggestions.length > 0) {
+    output += `**⭐ ADDITIONAL IMPROVEMENTS:**
+
+`;
+    mediumSuggestions.slice(0, 3).forEach((suggestion, index) => {
+      output += `**${index + 1}. ${suggestion.category}**
+✨ **Suggestion:** ${suggestion.suggested}
+💡 **Reasoning:** ${suggestion.reasoning}
+
+`;
+    });
+  }
+
+  // Add analysis summary
+  output += `**📊 ANALYSIS SUMMARY:**
+• **Skills Match:** ${cvAnalysis.skills.technical.length} technical skills found, ${jobAnalysis.requiredSkills.length} required by job
+• **Experience Level:** ${jobAnalysis.experienceLevel} role detected
+• **Industry Focus:** ${jobAnalysis.industry}
+• **Key Strengths:** ${cvAnalysis.experience.technologies.slice(0, 3).join(', ')}
+• **Missing Keywords:** ${jobAnalysis.keywords.filter(k => !cvAnalysis.sections.some(s => s.content.toLowerCase().includes(k))).slice(0, 3).join(', ')}
+
+**🎯 NEXT STEPS:**
+1. Apply high-priority changes first for maximum impact
+2. Add specific metrics to quantify your achievements  
+3. Align your summary with job requirements
+4. Ensure technical skills match job posting order`;
+
+  return output;
+}
+
+// Generate personalized cover letter with specific examples from CV
 async function generateCoverLetter(jobDescription: string, personalTouch: string, cvText: string): Promise<string> {
   await simulateProcessing();
   
-  console.log('Generating personalized cover letter...');
+  console.log('🎯 Creating targeted cover letter with CV insights...');
   
-  const companyName = extractCompanyName(jobDescription) || '[Company Name]';
-  const roleTitle = extractRoleTitle(jobDescription) || 'this position';
-  const keyRequirements = extractKeyRequirements(jobDescription);
-  const relevantSkills = extractRelevantSkills(cvText, jobDescription);
+  const cvAnalysis = analyzeCV(cvText);
+  const jobAnalysis = analyzeJobDescription(jobDescription);
+  
+  // Extract specific achievements and experiences
+  const relevantAchievements = cvAnalysis.experience.achievements
+    .filter(achievement => 
+      jobAnalysis.requiredSkills.some(skill => 
+        achievement.toLowerCase().includes(skill.toLowerCase())
+      )
+    )
+    .slice(0, 2);
+  
+  const matchingTechnologies = cvAnalysis.skills.technical
+    .filter(tech => 
+      jobAnalysis.requiredSkills.some(skill => 
+        skill.toLowerCase().includes(tech.toLowerCase())
+      )
+    )
+    .slice(0, 4);
+
+  const roleTitle = jobAnalysis.roleTitle;
+  const companyName = jobAnalysis.companyName;
   
   let coverLetter = `Dear Hiring Manager,
 
-I am writing to express my strong interest in the ${roleTitle} position at ${companyName}. After reviewing your job posting, I am confident that my background and experience align perfectly with what you're seeking.`;
+I am excited to apply for the ${roleTitle} position at ${companyName}. Your job posting perfectly aligns with my background in ${matchingTechnologies.slice(0, 2).join(' and ')}, and I'm eager to contribute to your team's success.`;
 
-  if (relevantSkills.length > 0) {
-    coverLetter += `\n\nMy experience with ${relevantSkills.slice(0, 3).join(', ')} directly matches your requirements.`;
+  // Add specific achievements from CV
+  if (relevantAchievements.length > 0) {
+    coverLetter += `\n\nIn my previous role, I ${relevantAchievements[0].toLowerCase()}`;
+    if (relevantAchievements.length > 1) {
+      coverLetter += ` Additionally, I ${relevantAchievements[1].toLowerCase()}`;
+    }
+    coverLetter += ` These experiences have prepared me well for the challenges outlined in your job description.`;
   }
-  
-  if (keyRequirements.length > 0) {
-    coverLetter += ` I am particularly excited about the opportunity to contribute to ${keyRequirements[0].toLowerCase()}.`;
+
+  // Add technology alignment
+  if (matchingTechnologies.length > 0) {
+    coverLetter += `\n\nMy technical expertise includes ${matchingTechnologies.join(', ')}, which directly matches your requirements.`;
+    
+    // Add specific context if metrics are available
+    if (cvAnalysis.experience.metrics.length > 0) {
+      coverLetter += ` I have successfully delivered projects that ${cvAnalysis.experience.metrics[0].includes('%') ? 'improved performance by ' + cvAnalysis.experience.metrics[0] : 'impacted ' + cvAnalysis.experience.metrics[0]}.`;
+    }
   }
-  
+
+  // Add industry-specific context
+  if (jobAnalysis.industry !== 'Technology') {
+    coverLetter += `\n\nI'm particularly drawn to ${companyName}'s work in ${jobAnalysis.industry.toLowerCase()}, and I believe my experience can help drive innovation in this space.`;
+  }
+
+  // Add personal touch if provided
   if (personalTouch) {
     coverLetter += `\n\n${personalTouch}`;
   }
-  
-  coverLetter += `\n\nI would welcome the opportunity to discuss how my skills and enthusiasm can contribute to your team's success. Thank you for considering my application.
+
+  coverLetter += `\n\nI would love the opportunity to discuss how my proven track record with ${matchingTechnologies.slice(0, 2).join(' and ')} can contribute to ${companyName}'s continued success. Thank you for your consideration.
 
 Best regards,
 [Your Name]`;
